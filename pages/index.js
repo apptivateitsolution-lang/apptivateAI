@@ -3,8 +3,7 @@ import React, { useState } from "react";
 
 /**
  * pages/index.js
- * Paste this full file over the existing pages/index.js in your repo.
- * This file is a client component (uses clipboard + hooks).
+ * Client-side page component — full file (paste entirely).
  */
 
 function CopyButton({ text, label }) {
@@ -16,7 +15,7 @@ function CopyButton({ text, label }) {
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
       try {
-        // fallback prompt for manual copy
+        // fallback to prompt for manual copy
         // eslint-disable-next-line no-alert
         window.prompt("Copy the text below (Ctrl/Cmd+C then Enter):", text || "");
       } catch (_) {}
