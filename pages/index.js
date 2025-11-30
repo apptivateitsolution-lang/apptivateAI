@@ -3,26 +3,23 @@ import React, { useState } from "react";
 
 /**
  * pages/index.js
- * Client-side page (uses clipboard and hooks). Paste this file as-is.
+ * Paste this full file over the existing pages/index.js in your repo.
+ * This file is a client component (uses clipboard + hooks).
  */
 
 function CopyButton({ text, label }) {
   const [copied, setCopied] = useState(false);
   async function doCopy() {
     try {
-      // navigator.clipboard is only available in browsers — this is a client component
       await navigator.clipboard.writeText(text || "");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      // fallback: attempt prompt if clipboard fails
       try {
-        // show a prompt so user can copy manually
+        // fallback prompt for manual copy
         // eslint-disable-next-line no-alert
-        window.prompt("Copy text below (Ctrl/Cmd+C, Enter):", text || "");
-      } catch (_) {
-        // ignore
-      }
+        window.prompt("Copy the text below (Ctrl/Cmd+C then Enter):", text || "");
+      } catch (_) {}
     }
   }
   return (
@@ -132,11 +129,7 @@ export default function Home() {
           <h4 style={{ margin: 0 }}>Image prompt</h4>
           <CopyButton text={prompt} label="Copy prompt" />
         </div>
-        <textarea
-          readOnly
-          value={prompt}
-          style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 8, background: "#fff", minHeight: 80 }}
-        />
+        <textarea readOnly value={prompt} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 8, background: "#fff", minHeight: 80 }} />
       </div>
     );
   }
@@ -149,9 +142,7 @@ export default function Home() {
           <h4 style={{ margin: 0 }}>Full JSON</h4>
           <CopyButton text={text} label="Copy JSON" />
         </div>
-        <pre style={{ whiteSpace: "pre-wrap", background: "#0f172a", color: "#e6eef8", padding: 12, borderRadius: 8, marginTop: 8 }}>
-          {text}
-        </pre>
+        <pre style={{ whiteSpace: "pre-wrap", background: "#0f172a", color: "#e6eef8", padding: 12, borderRadius: 8, marginTop: 8 }}>{text}</pre>
       </div>
     );
   }
