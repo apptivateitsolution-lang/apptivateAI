@@ -1,0 +1,155 @@
+
+import React, { useState } from "react";
+
+function CopyButton({ text, label }) {
+  const [copied, setCopied] = useState(false);
+  async function doCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      alert("Copy failed");
+    }
+  }
+  return (
+    <button onClick={doCopy} style={{
+      padding: "6px 10px",
+      background: copied ? "#16a34a" : "#0ea5e9",
+      color: "white",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer",
+      fontSize: 13
+    }}>
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
+export default function Home() {
+  const [tab, setTab] = useState("caption");
+  const [loading, setLoading] = useState(false);
+  const [output, setOutput] = useState(null);
+
+  const [productName, setProductName] = useState("");
+  const [tone, setTone] = useState("friendly");
+  const [site, setSite] = useState("");
+  const [messageCtx, setMessageCtx] = useState("");
+
+  async function callAI(action, payload = {}) {
+    if (loading) return;
+    setLoading(true);
+    setOutput(null);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, payload })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      setOutput(data.result ?? data);
+    } catch (err) {
+      setOutput({ error: err?.error || JSON.stringify(err) });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderCaptions(captions) {
+    if (!Array.isArray(captions)) return null;
+    return (
+      <div style={{display:'grid', gap:8}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <h4 style={{margin:0}}>Captions</h4>
+          <CopyButton text={captions.join('\n')} label="Copy all captions" />
+        </div>
+        {captions.map((c, i) => (
+          <div key={i} style={{padding:12, background:'#fff', borderRadius:8, boxShadow:'0 1px 6px rgba(0,0,0,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{marginRight:12}}>{c}</div>
+            <CopyButton text={c} label="Copy" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderHashtags(tags) {
+    if (!Array.isArray(tags)) return null;
+    const joined = tags.join(' ');
+    return (
+      <div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <h4 style={{margin:0}}>Hashtags</h4>
+          <CopyButton text={joined} label="Copy hashtags" />
+        </div>
+        <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:8}}>
+          {tags.map((t,i)=>(
+            <div key={i} style={{padding:'6px 10px', background:'#f1f5f9', borderRadius:20, fontSize:13}}>{t}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderImagePrompt(prompt) {
+    if (!prompt) return null;
+    return (
+      <div style={{marginTop:8}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <h4 style={{margin:0}}>Image prompt</h4>
+          <CopyButton text={prompt} label="Copy prompt" />
+        </div>
+        <textarea readOnly value={prompt} style={{width:'100%',marginTop:8,padding:10,borderRadius:8,background:'#fff',minHeight:80}} />
+      </div>
+    );
+  }
+
+  function renderRawJSON(obj) {
+    const text = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    return (
+      <div style={{marginTop:12}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <h4 style={{margin:0}}>Full JSON</h4>
+          <CopyButton text={text} label="Copy JSON" />
+        </div>
+        <pre style={{whiteSpace:'pre-wrap', background:'#0f172a', color:'#e6eef8', padding:12, borderRadius:8, marginTop:8}}>{text}</pre>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{fontFamily:'Inter, ui-sans-serif, system-ui', padding:20, maxWidth:1000, margin:'0 auto'}}>
+      <header style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+        <div>
+          <h1 style={{margin:0}}>Apptivate AI</h1>
+          <p style={{margin:0, color:'#64748b'}}>Marketing copy, captions & image prompts — fast</p>
+        </div>
+      </header>
+
+      <main style={{display:'grid', gridTemplateColumns:'1fr 420px', gap:20}}>
+        <section style={{background:'#f8fafc', padding:16, borderRadius:12}}>
+          <div style={{display:'flex', gap:8, marginBottom:12}}>
+            <button onClick={()=>setTab('caption')} style={{flex:1, padding:10, borderRadius:8, background: tab==='caption' ? '#0ea5e9' : '#fff', color: tab==='caption' ? '#fff' : '#0f172a', border:'1px solid #e2e8f0'}}>Captions</button>
+            <button onClick={()=>setTab('post')} style={{flex:1, padding:10, borderRadius:8, background: tab==='post' ? '#0ea5e9' : '#fff', color: tab==='post' ? '#fff' : '#0f172a', border:'1px solid #e2e8f0'}}>Post</button>
+            <button onClick={()=>setTab('audit')} style={{flex:1, padding:10, borderRadius:8, background: tab==='audit' ? '#0ea5e9' : '#fff', color: tab==='audit' ? '#fff' : '#0f172a', border:'1px solid #e2e8f0'}}>Audit</button>
+            <button onClick={()=>setTab('message')} style={{flex:1, padding:10, borderRadius:8, background: tab==='message' ? '#0ea5e9' : '#fff', color: tab==='message' ? '#fff' : '#0f172a', border:'1px solid #e2e8f0'}}>Message</button>
+          </div>
+
+          {tab === 'caption' && (
+            <div>
+              <label style={{fontWeight:600}}>Product or Topic</label>
+              <input value={productName} onChange={(e)=>setProductName(e.target.value)} placeholder="e.g., Cold Brew Launch" style={{width:'100%', padding:10, borderRadius:8, marginTop:8, border:'1px solid #e2e8f0'}} />
+              <div style={{display:'flex', gap:8, marginTop:12}}>
+                <select value={tone} onChange={(e)=>setTone(e.target.value)} style={{flex:1, padding:10, borderRadius:8}}>
+                  <option value="friendly">Friendly</option>
+                  <option value="professional">Professional</option>
+                  <option value="witty">Witty</option>
+                </select>
+                <button onClick={()=>callAI('caption',{productName, tone, count:5})} disabled={loading} style={{padding:'10px 16px', borderRadius:8, background:'#0ea5e9', color:'#fff', border:'none'}}> {loading ? 'Generating...' : 'Generate'}</button>
+              </div>
+            </div>
+          )}
+
+# truncated (file continues)
