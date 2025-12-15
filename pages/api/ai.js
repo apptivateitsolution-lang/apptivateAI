@@ -9,6 +9,14 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (req.method === "GET") {
+  return res.json({
+    keyPresent: !!process.env.OPENAI_API_KEY,
+    keyPrefix: process.env.OPENAI_API_KEY?.slice(0, 7),
+    time: new Date().toISOString()
+  });
+}
+
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
