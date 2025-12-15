@@ -1,28 +1,37 @@
 let lastRequestTime = 0;
 
 export default async function handler(req, res) {
-  const now = Date.now();
-  if (now - lastRequestTime < 1500) {
-    return res.status(429).json({ error: "Too many requests. Please wait." });
+
+
+  if (req.method === "GET") {
+    return res.status(200).json({
+      apiAlive: true,
+      keyPresent: !!process.env.OPENAI_API_KEY,
+      keyPrefix: process.env.OPENAI_API_KEY
+        ? process.env.OPENAI_API_KEY.slice(0, 7)
+        : null,
+      time: new Date().toISOString(),
+    });
   }
-  lastRequestTime = now;
+
+ 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  if (req.method === "GET") {
-  return res.json({
-    keyPresent: !!process.env.OPENAI_API_KEY,
-    keyPrefix: process.env.OPENAI_API_KEY?.slice(0, 7),
-    time: new Date().toISOString()
-  });
-}
 
+
+  const now = Date.now();
+  if (now - lastRequestTime < 3000) {
+    return res.status(429).json({
+      error: "Please wait a few seconds before trying again.",
+    });
+  }
+  lastRequestTime = now;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured" });
   }
-
   const { action, payload } = req.body || {};
   if (!action) {
     return res.status(400).json({ error: "Missing action" });
