@@ -1,89 +1,86 @@
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
-
-  const { action, payload } = req.body || {};
-  if (!action) return res.status(400).json({ error: 'Missing action' });
-
-  let prompt = '';
-  switch (action) {
-    case 'caption':
-      prompt = `Write ${payload?.count ?? 5} short Instagram captions for ${payload?.productName || 'a product'} in ${payload?.tone || 'friendly'} tone. Also return one image prompt and 10 hashtags. Respond in JSON with keys: captions (array), image_prompt, hashtags (array).`;
-      break;
-    case 'post':
-      prompt = `Create a short social media post for: ${payload?.topic || ''}. Provide caption and image prompt in JSON { caption, image_prompt }`;
-      break;
-    case 'audit':
-      prompt = `Perform a quick SEO/profile audit for this website: ${payload?.website || 'unknown'}. Provide top 5 issues and short fixes as JSON { issues: [{title, fix}], score: number }`;
-      break;
-    case 'message':
-      prompt = `Write a professional message/email: ${payload?.context || ''}. Respond as JSON { subject, body }`;
-      break;
-    default:
-      return res.status(400).json({ error: 'Unknown action' });
+  if (!apiKey) {
+    return res.status(500).json({ error: "OPENAI_API_KEY not configured" });
   }
 
-  const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
-  const body = {
-    model,
-    messages: [
-      { role: 'system', content: 'You are a helpful marketing assistant.' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.7,
-    max_tokens: 400
-  };
+  const { action, payload } = req.body || {};
+  if (!action) {
+    return res.status(400).json({ error: "Missing action" });
+  }
+
+  let prompt = "";
+
+  switch (action) {
+    case "caption":
+      prompt = `Write ${payload?.count ?? 5} Instagram captions for "${payload?.productName || "a product"}" in ${payload?.tone || "friendly"} tone.
+Return JSON:
+{
+  "captions": [],
+  "image_prompt": "",
+  "hashtags": []
+}`;
+      break;
+
+    case "post":
+      prompt = `Create a short social media post for "${payload?.topic}". Return JSON { "caption": "", "image_prompt": "" }`;
+      break;
+
+    case "audit":
+      prompt = `Do a quick SEO audit for ${payload?.website}. Return JSON { "issues": [{ "title": "", "fix": "" }], "score": 0 }`;
+      break;
+
+    case "message":
+      prompt = `Write a professional message for: ${payload?.context}. Return JSON { "subject": "", "body": "" }`;
+      break;
+
+    default:
+      return res.status(400).json({ error: "Unknown action" });
+  }
 
   try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        input: prompt,
+        temperature: 0.7,
+      }),
     });
 
-    // Log headers for debugging rate limits
-    try {
-      console.log('OpenAI headers:', {
-        status: r.status,
-        'retry-after': r.headers.get('retry-after'),
-        'x-ratelimit-remaining-requests': r.headers.get('x-ratelimit-remaining-requests')
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("OpenAI API error:", data);
+      return res.status(response.status).json({
+        error: "OpenAI error",
+        details: data,
       });
-    } catch (e) {}
-
-    if (!r.ok) {
-      const details = await r.text();
-      const retryAfter = r.headers.get('retry-after');
-      return res.status(r.status).json({ error: 'OpenAI error', status: r.status, details, retryAfter });
     }
 
-    const data = await r.json();
-    const assistant = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? '';
+    const outputText =
+      data.output_text ||
+      data.output?.[0]?.content?.[0]?.text ||
+      "";
 
-    // Try to parse assistant as JSON, otherwise return string
+    // Try JSON parsing
     try {
-      const parsed = JSON.parse(assistant);
-      return res.status(200).json({ result: parsed, raw: assistant });
-    } catch (e) {
-      // try to extract JSON substring
-      const m = assistant.match(/\{[\s\S]*\}/);
-      if (m) {
-        try {
-          const parsed2 = JSON.parse(m[0]);
-          return res.status(200).json({ result: parsed2, raw: assistant });
-        } catch (err) {}
-      }
-      return res.status(200).json({ result: assistant });
+      const parsed = JSON.parse(outputText);
+      return res.status(200).json({ result: parsed });
+    } catch {
+      return res.status(200).json({ result: outputText });
     }
+
   } catch (err) {
-    console.error('Request error', err);
-    return res.status(500).json({ error: err.message || String(err) });
+    console.error("Server error:", err);
+    return res.status(500).json({ error: "Server error", details: err.message });
   }
 }
