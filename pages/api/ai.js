@@ -1,4 +1,11 @@
+let lastRequestTime = 0;
+
 export default async function handler(req, res) {
+  const now = Date.now();
+  if (now - lastRequestTime < 1500) {
+    return res.status(429).json({ error: "Too many requests. Please wait." });
+  }
+  lastRequestTime = now;
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
